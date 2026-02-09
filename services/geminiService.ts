@@ -2,8 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GradingResult, GradingReport, ClassData } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 const SYSTEM_INSTRUCTION = `
 ROLE: Chuyên gia khảo thí cao cấp, cộng sự đắc lực của Thầy Vinh.
 NHIỆM VỤ: Phân tích dữ liệu Sheet (TSV/CSV), chấm điểm và viết nhận xét cá nhân hóa theo ĐÚNG 5 Ý CHI TIẾT.
@@ -48,8 +47,7 @@ YÊU CẦU ĐẶC BIỆT:
 `;
 
 export async function processClassGrading(data: ClassData): Promise<GradingReport> {
-  const model = 'gemini-3-pro-preview';
-
+  model: "gemini-1.5-pro",
   const parts: any[] = [
     { text: `BIỂU MẪU CHẤM ĐIỂM CHI TIẾT: ${data.markingGuide}` },
     { text: `--- DỮ LIỆU ĐẦU VÀO ---` },
