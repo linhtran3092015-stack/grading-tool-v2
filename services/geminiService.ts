@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GradingReport, ClassData } from "../types";
 
+// Sử dụng API Key từ biến môi trường của Vite
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 const SYSTEM_INSTRUCTION = `
@@ -20,8 +21,9 @@ YÊU CẦU: Xuất kết quả JSON chuẩn, sắp xếp A-Z theo FirstName.
 `;
 
 export async function processClassGrading(data: ClassData): Promise<GradingReport> {
+  // Thay đổi 1: Dùng gemini-1.5-flash để tránh lỗi 404 Not Found trên một số vùng
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-pro",
+    model: "gemini-1.5-flash", 
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -61,19 +63,30 @@ export async function processClassGrading(data: ClassData): Promise<GradingRepor
   ];
 
   if (data.testImage) {
-    parts.unshift({
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: data.testImage.split(',')[1]
-      }
-    } as any);
+    try {
+        parts.unshift({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: data.testImage.split(',')[1]
+          }
+        } as any);
+    } catch (e) {
+        console.error("Lỗi xử lý ảnh:", e);
+    }
   }
 
-  const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
-  const response = await result.response;
-  const report: GradingReport = JSON.parse(response.text());
+  // Thay đổi 2: Bọc trong try-catch để bắt lỗi API cụ thể
+  try {
+    const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
+    const response = await result.response;
+    const text = response.text();
+    const report: GradingReport = JSON.parse(text);
 
-  report.results.sort((a, b) => a.firstName.localeCompare(b.firstName, 'vi'));
-  
-  return report;
+    report.results.sort((a, b) => a.firstName.localeCompare(b.firstName, 'vi'));
+    return report;
+  } catch (error: any) {
+    console.error("Lỗi Gemini API:", error);
+    // Ném lỗi về phía giao diện hiển thị
+    throw new Error(error.message || "Không thể kết nối với Gemini AI");
+  }
 }
